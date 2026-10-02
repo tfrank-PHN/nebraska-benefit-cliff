@@ -201,7 +201,7 @@ determining whether a family hits a cliff drop include:
 
 # --- THE UNIFIED VISUAL AREA CHART ENGINE ---
 st.markdown("---")
-st.subheader("📉 The Stacked Resource Visualization: Dependency Evolution vs. Cost of Living")
+st.subheader("📉 The Benefit Cliff Visualization: Total Resources vs. Local Survival Threshold")
 
 wage_axis = np.linspace(12.0, 50.0, 250)
 plot_points = []
@@ -228,7 +228,7 @@ plot_points.append({
 "Survival Threshold Baseline": STARTING_SURVIVAL_NEED
 })
 chart_df = pd.DataFrame(plot_points)
-Render layers cleanly inside a native Streamlit area chart component
+# Render layers cleanly inside a native Streamlit area chart component
 st.area_chart(
 chart_df,
 x="Hourly Wage ($)",

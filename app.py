@@ -227,7 +227,7 @@ plot_points.append({
 "Survival Needs Baseline": STARTING_SURVIVAL_NEED
 })
 chart_df = pd.DataFrame(plot_points)
-Render a robust stacked bar chart with custom colors
+# Render a robust stacked bar chart with custom colors
 st.bar_chart(
 chart_df,
 x="Hourly Wage",

@@ -196,7 +196,7 @@ Based on a household size of **1 Adult and {num_children} Children**, the active
 determining whether a family hits a cliff drop include:
 *   **TANF/ADC Cash Assistance Cutoff:** **\\${TANF_LIMIT_BASE:,.2f} / month** gross income limit.
 *   **Medicaid Expansion Threshold (138% FPL):** **\\${(MEDICAID_LIMIT_PCT * FPL_MONTHLY_BASE):,.2f} / month** gross income limit.
-*   **SNAP Food Assistance Eligibility Line (165% FPL):** **\\${(SNAP_LIMIT_PCT * FPL_MONTHLY_BASE):)(_FPL_MONTHLY_BASE):,.2f} / month** gross income limit.
+*   **SNAP Food Assistance Eligibility Line (165% FPL):** **\\${(SNAP_LIMIT_PCT * FPL_MONTHLY_BASE):,.2f} / month** gross income limit.
 *   **Childcare Subsidy Entry Threshold (185% FPL via LB 304):** **\\${(CCAP_LIMIT_PCT * FPL_MONTHLY_BASE):,.2f} / month** gross income limit.
 """)
 
@@ -225,12 +225,12 @@ plot_points.append({"Hourly Wage": w, "Resource Value": gross, "Type": "1. Gross
 plot_points.append({"Hourly Wage": w, "Resource Value": tot_public, "Type": "2. Public Assistance"})
 plot_points.append({"Hourly Wage": w, "Resource Value": tot_employer, "Type": "3. Employer Fringe"})
 chart_df = pd.DataFrame(plot_points)
-# Create a flat reference dataset for the baseline cost line
+Create a flat reference dataset for the baseline cost line
 line_df = pd.DataFrame({
 "Hourly Wage": wage_axis,
 "Cost Value": [STARTING_SURVIVAL_NEED] * len(wage_axis)
 })
-# Layer 1: The Stacked Bars for the Resource Components
+Layer 1: The Stacked Bars for the Resource Components
 bars = alt.Chart(chart_df).mark_bar(size=14).encode(
 x=alt.X("Hourly Wage:Q", title="Hourly Wage ($)"),
 y=alt.Y("Resource Value:Q", title="Total Monthly Resources ($)", stack=True),
@@ -239,12 +239,12 @@ domain=["1. Gross Earned Wages", "2. Public Assistance", "3. Employer Fringe"],
 range=["#2ecc71", "#ff4b4b", "#f1c40f"]
 ), title="Resource Layer")
 )
-# Layer 2: The Independent Solid Line for Cost of Living
+Layer 2: The Independent Solid Line for Cost of Living
 line = alt.Chart(line_df).mark_line(color="#00c0f2", strokeWidth=3.5).encode(
 x="Hourly Wage:Q",
 y="Cost Value:Q"
 )
-# Overlay both components onto the screen inside a single layout window
+Overlay both components onto the screen inside a single layout window
 st.altair_chart(bars + line, use_container_width=True)
 st.caption("""
 🟩 Green Bars = Gross Wages. 🟥 Red Bars = Public Assistance Value. 🟨 Yellow Bars = Employer Incentives. 🔵 Solid Blue Line = Real Out-Of-Pocket Cost of Living Baseline.

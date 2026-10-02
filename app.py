@@ -133,7 +133,6 @@ for year in range(1, 6):
         ccap_received = 0.0
         cliffs_hit.append("Childcare Subsidy")
 
-    # Add Non-Taxable / Fringe Benefits directly into net tracking resources without penalizing safety net rules
     total_employer_incentives = emp_childcare_subsidy + emp_tuition + emp_transit + emp_bridge
     total_benefits_value = tanf_received + snap_received + medicaid_received + ccap_received
     
@@ -187,8 +186,7 @@ with col_metrics:
     cumulative_bridge_cost = df["Monthly Deficit Gap"].sum() * 12
     st.metric(
         label="Total 5-Year Net Deficit Gap",
-        value=f"${cumulative_bridge_cost:,.2f}",
-        help="Remaining money required to bring the household up to a stable survival threshold."
+        value=f"${cumulative_bridge_cost:,.2f}"
     )
     st.info(f"Target Monthly Self-Sufficiency Baseline: ${STARTING_SURVIVAL_NEED:,.2f}")
 
@@ -198,10 +196,10 @@ st.subheader("📋 Context Matrix: Dynamic Nebraska Program Limits & Thresholds"
 st.markdown(f"""
 Based on a household size of **1 Adult and {num_children} Children**, the active legal limits 
 determining whether a family hits a cliff drop include:
-*   **TANF/ADC Cash Assistance Cutoff:** **\${TANF_LIMIT_BASE:,.2f} / month** gross income limit.
-*   **Medicaid Expansion Threshold (138% FPL):** **\${(MEDICAID_LIMIT_PCT * FPL_MONTHLY_BASE):,.2f} / month** gross income limit.
-*   **SNAP Food Assistance Eligibility Line (165% FPL):** **\${(SNAP_LIMIT_PCT * FPL_MONTHLY_BASE):,.2f} / month** gross income limit.
-*   **Childcare Subsidy Entry Threshold (185% FPL via LB 304):** **\${(CCAP_LIMIT_PCT * FPL_MONTHLY_BASE):,.2f} / month** gross income limit.
+*   **TANF/ADC Cash Assistance Cutoff:** **\\${TANF_LIMIT_BASE:,.2f} / month** gross income limit.
+*   **Medicaid Expansion Threshold (138% FPL):** **\\${(MEDICAID_LIMIT_PCT * FPL_MONTHLY_BASE):,.2f} / month** gross income limit.
+*   **SNAP Food Assistance Eligibility Line (165% FPL):** **\\${(SNAP_LIMIT_PCT * FPL_MONTHLY_BASE):,.2f} / month** gross income limit.
+*   **Childcare Subsidy Entry Threshold (185% FPL via LB 304):** **\\${(CCAP_LIMIT_PCT * FPL_MONTHLY_BASE):,.2f} / month** gross income limit.
 """)
 
 # --- THE STACKED VISUAL AREA CHART ENGINE ---
@@ -217,10 +215,11 @@ for w in wage_axis:
     t_val = VAL_TANF if gross <= TANF_LIMIT_BASE else 0
     m_val = VAL_MEDICAID if gross <= (MEDICAID_LIMIT_PCT * FPL_MONTHLY_BASE) else 0
     s_val = VAL_SNAP if gross <= (SNAP_LIMIT_PCT * FPL_MONTHLY_BASE) else 0
-c_val = VAL_CCAP if gross <= (CCAP_LIMIT_PCT * FPL_MONTHLY_BASE) else 0
-if c_val > 0 and gross > FPL_MONTHLY_BASE:
-c_val -= (0.07 * gross)
-tot_public = t_val + m_val + s_val + c_val
+    c_val = VAL_CCAP if gross <= (CCAP_LIMIT_PCT * FPL_MONTHLY_BASE) else 0
+    if c_val > 0 and gross > FPL_MONTHLY_BASE:
+        c_val -= (0.07 * gross)
+        
+    tot_public = t_val + m_val + s_val + c_val
 tot_employer = emp_childcare_subsidy + emp_tuition + emp_transit + emp_bridge
 plot_points.append({
 "Hourly Wage ($)": w,
@@ -230,7 +229,6 @@ plot_points.append({
 "Survival Threshold Baseline": STARTING_SURVIVAL_NEED
 })
 chart_df = pd.DataFrame(plot_points)
-Render stacked areas + line reference layer via Streamlit native tools
 st.area_chart(
 chart_df,
 x="Hourly Wage ($)",
@@ -245,5 +243,4 @@ color=["#00c0f2"]
 )
 st.caption("""
 🟩 Green Area = Gross Earned Wages. 🟥 Red Area = State Public Aid Value Remaining. 🟨 Yellow Area = Employer Non-Taxable Fringe Additions. 🔵 Blue Line = Cost of Living.
-Notice how adjusting the Employer Sliders pushes the overall resource layers safely upwards over the blue baseline without shifting or shrinking the state's public aid footprints.
 """)

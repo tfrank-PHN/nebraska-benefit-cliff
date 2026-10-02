@@ -12,7 +12,6 @@ Adjust household parameters, configure realistic cost scales, and view explicit 
 """)
 
 # --- STATE AND POLICY COST MATRIX DICTIONARY (2026 ESTIMATES FOR NEBRASKA) ---
-# Standard thresholds and recommended survival costs based on total family size (1 adult + N children)
 household_defaults = {
     1: {"fpl": 1718.00, "rent": 1000, "childcare_per_kid": 800, "food": 450, "medical": 400, "misc": 350},
     2: {"fpl": 2153.00, "rent": 1200, "childcare_per_kid": 800, "food": 700, "medical": 550, "misc": 450},
@@ -22,11 +21,30 @@ household_defaults = {
     6: {"fpl": 3893.00, "rent": 2000, "childcare_per_kid": 600, "food": 1550, "medical": 800, "misc": 650}
 }
 
+# --- CALLBACK RESET LOGIC TO FORCE STATE SYNCHRONIZATION ---
+def apply_family_size_defaults():
+    # Syncs state immediately when children count changes or reset button is pressed
+    size = st.session_state.get("num_kids_key", 2)
+    defs = household_defaults[size]
+    st.session_state["rent_key"] = defs["rent"]
+    st.session_state["childcare_key"] = defs["childcare_per_kid"]
+    st.session_state["food_key"] = defs["food"]
+    st.session_state["medical_key"] = defs["medical"]
+    st.session_state["misc_key"] = defs["misc"]
+
+# Initialize baseline variables cleanly on first app load
+if "rent_key" not in st.session_state:
+    apply_family_size_defaults()
+
 # --- SIDEBAR: HOUSEHOLD PROFILE ---
 st.sidebar.header("👪 Household Profile")
-num_children = st.sidebar.slider("Number of Dependent Children", min_value=1, max_value=6, value=2, step=1)
+num_children = st.sidebar.slider(
+    "Number of Dependent Children", 
+    min_value=1, max_value=6, value=2, step=1,
+    key="num_kids_key", on_change=apply_family_size_defaults
+)
 
-# Fetch defaults based on selected child count
+# Fetch active baseline boundaries 
 defaults = household_defaults[num_children]
 
 # --- SIDEBAR: PROGRESSION & WAGES ---
@@ -43,25 +61,20 @@ else:
     annual_raise_flat = st.sidebar.slider("Annual Wage Increase ($/hr)", min_value=0.10, max_value=5.00, value=0.50, step=0.05)
     annual_raise_pct = 0.0
 
+# Inflation slider expanded significantly to capture historic volatility peaks
 inflation_rate = st.sidebar.slider("Annual Inflation Rate (%)", min_value=1.0, max_value=15.0, value=3.0, step=0.5) / 100
 
-# --- SIDEBAR: COST SLIDERS WITH INTUITIVE RESET MECHANISM ---
+# --- SIDEBAR: COST SLIDERS WITH INTEGRATED RESET BUTTON ---
 st.sidebar.markdown("---")
 st.sidebar.header("🏠 Monthly Private-Market Costs")
 
-if st.sidebar.button("🔄 Reset Costs to Selected Family Size Defaults"):
-    st.session_state["rent"] = defaults["rent"]
-    st.session_state["childcare"] = defaults["childcare_per_kid"]
-    st.session_state["food"] = defaults["food"]
-    st.session_state["medical"] = defaults["medical"]
-    st.session_state["misc"] = defaults["misc"]
+st.sidebar.button("🔄 Reset Costs to Selected Family Size Defaults", on_click=apply_family_size_defaults)
 
-# Use session state to handle manual overrides vs dynamic resets cleanly
-rent_val = st.sidebar.slider("Housing & Utilities ($/mo)", 500, 4000, st.session_state.get("rent", defaults["rent"]), 50)
-childcare_val = st.sidebar.slider("Childcare Cost Per Child ($/mo)", 200, 2000, st.session_state.get("childcare", defaults["childcare_per_kid"]), 50)
-food_val = st.sidebar.slider("Food & Groceries ($/mo)", 200, 2500, st.session_state.get("food", defaults["food"]), 50)
-medical_val = st.sidebar.slider("Private Health Insurance Risk ($/mo)", 100, 2000, st.session_state.get("medical", defaults["medical"]), 25)
-misc_val = st.sidebar.slider("Other Basic Needs / Transport ($/mo)", 100, 1500, st.session_state.get("misc", defaults["misc"]), 25)
+rent_val = st.sidebar.slider("Housing & Utilities ($/mo)", 500, 5000, key="rent_key", step=50)
+childcare_val = st.sidebar.slider("Childcare Cost Per Child ($/mo)", 200, 2000, key="childcare_key", step=50)
+food_val = st.sidebar.slider("Food & Groceries ($/mo)", 200, 3000, key="food_key", step=50)
+medical_val = st.sidebar.slider("Private Health Insurance Risk ($/mo)", 100, 2500, key="medical_key", step=25)
+misc_val = st.sidebar.slider("Other Basic Needs / Transport ($/mo)", 100, 2000, key="misc_key", step=25)
 
 # --- APP TEXT CLARIFICATIONS ---
 with st.expander("ℹ️ What is 'Private Health Insurance Risk'?"):
@@ -87,7 +100,6 @@ VAL_CCAP = total_childcare_market
 
 data = []
 for year in range(1, 6):
-    # Calculate raises sequentially
     if raise_type == "Percentage (%)":
         wage = current_wage * ((1 + annual_raise_pct) ** (year - 1))
     else:
@@ -99,28 +111,24 @@ for year in range(1, 6):
     
     cliffs_hit = []
     
-    # 1. TANF/ADC Cash Aid
     if gross_monthly_earnings <= TANF_LIMIT_BASE:
         tanf_received = VAL_TANF
     else:
         tanf_received = 0.0
         cliffs_hit.append("TANF/ADC Cash")
         
-    # 2. Medicaid
     if gross_monthly_earnings <= (MEDICAID_LIMIT_PCT * current_fpl):
         medicaid_received = VAL_MEDICAID
     else:
         medicaid_received = 0.0
         cliffs_hit.append("Medicaid")
         
-    # 3. SNAP Food Assistance
     if gross_monthly_earnings <= (SNAP_LIMIT_PCT * current_fpl):
         snap_received = VAL_SNAP
     else:
         snap_received = 0.0
         cliffs_hit.append("SNAP Food Aid")
         
-    # 4. Childcare Subsidy (CCAP via LB 304)
     if gross_monthly_earnings <= (CCAP_LIMIT_PCT * current_fpl):
         ccap_received = VAL_CCAP
         if gross_monthly_earnings > current_fpl:
@@ -182,16 +190,16 @@ with col_metrics:
     )
     st.info(f"Target Monthly Self-Sufficiency Needed: ${STARTING_SURVIVAL_NEED:,.2f}")
 
-# --- NEW EXPANDED EXPLICIT STATE LIMIT DETAILS ---
+# --- TEXT POLICY CONTEXT FOR LAWMAKERS ---
 st.markdown("---")
 st.subheader("📋 Context Matrix: Dynamic Nebraska Program Limits & Thresholds")
 st.markdown(f"""
 Based on a household size of **1 Adult and {num_children} Children**, the active legal limits 
-determining whether a family hits a cliff drop this year include:
-*   **TANF/ADC Cash Assistance Cutoff:** **${TANF_LIMIT_BASE:,.2f} / month** gross.
-*   **Medicaid Expansion Threshold (138% FPL):** **${(MEDICAID_LIMIT_PCT * FPL_MONTHLY_BASE):,.2f} / month** gross.
-*   **SNAP Food Assistance Eligibility Line (165% FPL):** **${(SNAP_LIMIT_PCT * FPL_MONTHLY_BASE):,.2f} / month** gross.
-*   **Childcare Subsidy Entry Threshold (185% FPL via LB 304):** **${(CCAP_LIMIT_PCT * FPL_MONTHLY_BASE):,.2f} / month** gross.
+determining whether a family hits a cliff drop include:
+*   **TANF/ADC Cash Assistance Cutoff:** **\${TANF_LIMIT_BASE:,.2f} / month** gross income limit.
+*   **Medicaid Expansion Threshold (138% FPL):** **\${(MEDICAID_LIMIT_PCT * FPL_MONTHLY_BASE):,.2f} / month** gross income limit.
+*   **SNAP Food Assistance Eligibility Line (165% FPL):** **\${(SNAP_LIMIT_PCT * FPL_MONTHLY_BASE):,.2f} / month** gross income limit.
+*   **Childcare Subsidy Entry Threshold (185% FPL via LB 304):** **\${(CCAP_LIMIT_PCT * FPL_MONTHLY_BASE):,.2f} / month** gross income limit.
 """)
 
 # --- THE VISUAL LINE CHART ---
@@ -215,14 +223,12 @@ for w in wage_axis:
     plot_points.append({
         "Hourly Wage ($)": w,
         "Total Household Resources ($)": tot_res,
-        "Baseline Cost of Living ($)": STARTING_SURVIVAL_NEED
-    })
-
+"Baseline Cost of Living ($)": STARTING_SURVIVAL_NEED
+})
 chart_df = pd.DataFrame(plot_points)
-
 st.line_chart(
-    chart_df, 
-    x="Hourly Wage ($)", 
+chart_df,
+x="Hourly Wage ($)",
 y=["Total Household Resources ($)", "Baseline Cost of Living ($)"],
 color=["#ff4b4b", "#00c0f2"]
 )

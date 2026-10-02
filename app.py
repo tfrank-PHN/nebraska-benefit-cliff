@@ -202,7 +202,7 @@ determining whether a family hits a cliff drop include:
 
 # --- THE UNIFIED VISUAL AREA CHART ENGINE ---
 st.markdown("---")
-st.subheader("📉 The Stacked Resource Visualization: Dependency Evolution vs. Cost of Living")
+st.subheader("📉 The Benefit Cliff Visualization: Total Resources vs. Local Survival Threshold")
 
 wage_axis = np.linspace(12.0, 50.0, 250)
 plot_points = []
@@ -228,7 +228,6 @@ for w in wage_axis:
 "Survival Threshold Baseline": STARTING_SURVIVAL_NEED
 })
 chart_df = pd.DataFrame(plot_points)
-Render lines cleanly within a single line_chart element
 st.line_chart(
 chart_df,
 x="Hourly Wage ($)",

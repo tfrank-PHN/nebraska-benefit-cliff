@@ -202,7 +202,7 @@ determining whether a family hits a cliff drop include:
 
 # --- THE UNIFIED VISUAL AREA CHART ENGINE ---
 st.markdown("---")
-st.subheader("📉 The Benefit Cliff Visualization: Total Resources vs. Local Survival Threshold")
+st.subheader("📉 The Stacked Resource Visualization: Dependency Evolution vs. Cost of Living")
 
 wage_axis = np.linspace(12.0, 50.0, 250)
 plot_points = []
@@ -220,20 +220,22 @@ for w in wage_axis:
     tot_public = t_val + m_val + s_val + c_val
     tot_employer = emp_childcare_subsidy + emp_tuition + emp_transit + emp_bridge
     
-    plot_points.append({
+# We compile the fields cumulatively so st.area_chart stacks them perfectly
+plot_points.append({
 "Hourly Wage ($)": w,
-"Gross Earned Income": gross,
-"Public Assistance Layer": tot_public,
-"Employer Fringe Layer": tot_employer,
+"1. Gross Earned Income": gross,
+"2. Public Assistance Layer": tot_public,
+"3. Employer Fringe Layer": tot_employer,
 "Survival Threshold Baseline": STARTING_SURVIVAL_NEED
 })
 chart_df = pd.DataFrame(plot_points)
-st.line_chart(
+Render as a true stacked area visualization with a solid cutting reference line
+st.area_chart(
 chart_df,
 x="Hourly Wage ($)",
-y=["Gross Earned Income", "Public Assistance Layer", "Employer Fringe Layer", "Survival Threshold Baseline"],
+y=["1. Gross Earned Income", "2. Public Assistance Layer", "3. Employer Fringe Layer", "Survival Threshold Baseline"],
 color=["#2ecc71", "#ff4b4b", "#f1c40f", "#00c0f2"]
 )
 st.caption("""
-🟩 Green Line = Gross Earned Wages. 🟥 Red Line = State Public Aid Value Remaining. 🟨 Yellow Line = Employer Non-Taxable Fringe Additions. 🔵 Light Blue Line = Cost of Living Baseline.
+🟩 Green Area = Gross Earned Wages. 🟥 Red Area = State Public Aid Value Remaining. 🟨 Yellow Area = Employer Non-Taxable Fringe Additions. 🔵 Light Blue Area/Line boundary = Survival Threshold Cost.
 """)

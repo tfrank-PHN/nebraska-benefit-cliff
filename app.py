@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import altair as alt
 
 # Set up page and layout
 st.set_page_config(page_title="Advanced Nebraska Benefit Cliff Simulator", layout="wide")
@@ -199,12 +200,12 @@ determining whether a family hits a cliff drop include:
 *   **Childcare Subsidy Entry Threshold (185% FPL via LB 304):** **\\${(CCAP_LIMIT_PCT * FPL_MONTHLY_BASE):,.2f} / month** gross income limit.
 """)
 
-# --- THE UNIFIED VISUAL STACKED BAR CHART ENGINE ---
+# --- THE ADVANCED ALTAIR LAYERED CHART ENGINE ---
 st.markdown("---")
-st.subheader("📉 The Stacked Resource Visualization: Dependency Evolution vs. Cost of Living")
+st.subheader("📉 The Benefit Cliff Visualization: Total Resources vs. Local Survival Threshold")
 
-# Generate 35 key points for clean vertical columns across standard wages
-wage_axis = np.linspace(12.0, 50.0, 35)
+# Create a smooth density scale across wages from $12 to $50
+wage_axis = np.linspace(12.0, 50.0, 40)
 plot_points = []
 
 for w in wage_axis:
@@ -219,21 +220,32 @@ for w in wage_axis:
         
     tot_public = t_val + m_val + s_val + c_val
 tot_employer = emp_childcare_subsidy + emp_tuition + emp_transit + emp_bridge
-plot_points.append({
-"Hourly Wage": w,
-"Wages": gross,
-"Public Assistance": tot_public,
-"Employer Fringe": tot_employer,
-"Survival Needs Baseline": STARTING_SURVIVAL_NEED
-})
+# Restructure data in 'long format' so Altair can stack neatly
+plot_points.append({"Hourly Wage": w, "Resource Value": gross, "Type": "1. Gross Earned Wages"})
+plot_points.append({"Hourly Wage": w, "Resource Value": tot_public, "Type": "2. Public Assistance"})
+plot_points.append({"Hourly Wage": w, "Resource Value": tot_employer, "Type": "3. Employer Fringe"})
 chart_df = pd.DataFrame(plot_points)
-# Render a robust stacked bar chart with custom colors
-st.bar_chart(
-chart_df,
-x="Hourly Wage",
-y=["Wages", "Public Assistance", "Employer Fringe", "Survival Needs Baseline"],
-color=["#2ecc71", "#ff4b4b", "#f1c40f", "#00c0f2"]
+Create a flat reference dataset for the baseline cost line
+line_df = pd.DataFrame({
+"Hourly Wage": wage_axis,
+"Cost Value": [STARTING_SURVIVAL_NEED] * len(wage_axis)
+})
+Layer 1: The Stacked Bars for the Resource Components
+bars = alt.Chart(chart_df).mark_bar(size=14).encode(
+x=alt.X("Hourly Wage:Q", title="Hourly Wage ($)"),
+y=alt.Y("Resource Value:Q", title="Total Monthly Resources ($)", stack=True),
+color=alt.Color("Type:N", scale=alt.Scale(
+domain=["1. Gross Earned Wages", "2. Public Assistance", "3. Employer Fringe"],
+range=["#2ecc71", "#ff4b4b", "#f1c40f"]
+), title="Resource Layer")
 )
+Layer 2: The Independent Solid Line for Cost of Living
+line = alt.Chart(line_df).mark_line(color="#00c0f2", strokeWidth=3.5).encode(
+x="Hourly Wage:Q",
+y="Cost Value:Q"
+)
+Overlay both components onto the screen inside a single layout window
+st.altair_chart(bars + line, use_container_width=True)
 st.caption("""
-🟩 Green Block = Gross Wages. 🟥 Red Block = Public Benefits Value. 🟨 Yellow Block = Employer Voluntary Perks. 🔵 Blue Block/Border = Cost of Living Baseline.
+🟩 Green Bars = Gross Wages. 🟥 Red Bars = Public Assistance Value. 🟨 Yellow Bars = Employer Incentives. 🔵 Solid Blue Line = Real Out-Of-Pocket Cost of Living Baseline.
 """)

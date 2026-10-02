@@ -3,58 +3,97 @@ import pandas as pd
 import numpy as np
 
 # Set up page and layout
-st.set_page_config(page_title="Nebraska Benefit Cliff Simulator", layout="wide")
+st.set_page_config(page_title="Advanced Nebraska Benefit Cliff Simulator", layout="wide")
 
-st.title("🌾 Custom Nebraska Public Benefits & Cliff Trajectory Dashboard")
+st.title("🌾 Comprehensive Nebraska Public Benefits & Cliff Trajectory Dashboard")
 st.markdown("""
-This model illustrates the financial trajectory of a single parent in Nebraska over a 5-year career horizon. 
-Adjust the household size and specific cost categories to match your local Nebraska county or specific family profile.
+This model illustrates the 5-year financial trajectory of a single parent in Nebraska. 
+Adjust household parameters, configure realistic cost scales, and view explicit policy thresholds.
 """)
 
-# --- SIDEBAR CONTROLS ---
+# --- STATE AND POLICY COST MATRIX DICTIONARY (2026 ESTIMATES FOR NEBRASKA) ---
+# Standard thresholds and recommended survival costs based on total family size (1 adult + N children)
+household_defaults = {
+    1: {"fpl": 1718.00, "rent": 1000, "childcare_per_kid": 800, "food": 450, "medical": 400, "misc": 350},
+    2: {"fpl": 2153.00, "rent": 1200, "childcare_per_kid": 800, "food": 700, "medical": 550, "misc": 450},
+    3: {"fpl": 2588.00, "rent": 1400, "childcare_per_kid": 750, "food": 950, "medical": 650, "misc": 500},
+    4: {"fpl": 3023.00, "rent": 1600, "childcare_per_kid": 700, "food": 1150, "medical": 700, "misc": 550},
+    5: {"fpl": 3458.00, "rent": 1800, "childcare_per_kid": 650, "food": 1350, "medical": 750, "misc": 600},
+    6: {"fpl": 3893.00, "rent": 2000, "childcare_per_kid": 600, "food": 1550, "medical": 800, "misc": 650}
+}
+
+# --- SIDEBAR: HOUSEHOLD PROFILE ---
 st.sidebar.header("👪 Household Profile")
-num_children = st.sidebar.slider("Number of Dependent Children", min_value=1, max_value=4, value=2, step=1)
-current_wage = st.sidebar.slider("Starting Hourly Wage ($)", min_value=12.0, max_value=35.0, value=16.0, step=0.50)
+num_children = st.sidebar.slider("Number of Dependent Children", min_value=1, max_value=6, value=2, step=1)
+
+# Fetch defaults based on selected child count
+defaults = household_defaults[num_children]
+
+# --- SIDEBAR: PROGRESSION & WAGES ---
+st.sidebar.markdown("---")
+st.sidebar.header("📈 Career Progression & Raises")
+current_wage = st.sidebar.slider("Starting Hourly Wage ($)", min_value=12.0, max_value=45.0, value=16.0, step=0.50)
 hours_per_week = st.sidebar.number_input("Hours Worked Per Week", value=40, step=1)
-annual_raise = st.sidebar.slider("Annual Wage Increase (%)", min_value=1.0, max_value=5.0, value=2.0, step=0.5) / 100
-inflation_rate = st.sidebar.slider("Annual Cost of Living Inflation (%)", min_value=1.0, max_value=5.0, value=3.0, step=0.5) / 100
 
+raise_type = st.sidebar.radio("Type of Annual Raise", ["Percentage (%)", "Flat Dollar ($)"])
+if raise_type == "Percentage (%)":
+    annual_raise_pct = st.sidebar.slider("Annual Wage Increase (%)", min_value=1.0, max_value=15.0, value=2.0, step=0.5) / 100
+    annual_raise_flat = 0.0
+else:
+    annual_raise_flat = st.sidebar.slider("Annual Wage Increase ($/hr)", min_value=0.10, max_value=5.00, value=0.50, step=0.05)
+    annual_raise_pct = 0.0
+
+inflation_rate = st.sidebar.slider("Annual Inflation Rate (%)", min_value=1.0, max_value=15.0, value=3.0, step=0.5) / 100
+
+# --- SIDEBAR: COST SLIDERS WITH INTUITIVE RESET MECHANISM ---
+st.sidebar.markdown("---")
 st.sidebar.header("🏠 Monthly Private-Market Costs")
-rent_cost = st.sidebar.slider("Housing & Utilities ($/mo)", min_value=600, max_value=2500, value=1200, step=50)
-childcare_cost_per_kid = st.sidebar.slider("Childcare Cost Per Child ($/mo)", min_value=400, max_value=1500, value=800, step=50)
-food_cost = st.sidebar.slider("Food & Groceries ($/mo)", min_value=300, max_value=1500, value=700, step=50)
-medical_cost = st.sidebar.slider("Private Health Insurance Risk ($/mo)", min_value=200, max_value=1200, value=550, step=25)
-misc_cost = st.sidebar.slider("Transport & Miscellaneous ($/mo)", min_value=200, max_value=1000, value=450, step=25)
 
-# Calculate dynamic starting survival need based on user's cost sliders
-total_childcare_market = childcare_cost_per_kid * num_children
-STARTING_SURVIVAL_NEED = rent_cost + total_childcare_market + food_cost + medical_cost + misc_cost
+if st.sidebar.button("🔄 Reset Costs to Selected Family Size Defaults"):
+    st.session_state["rent"] = defaults["rent"]
+    st.session_state["childcare"] = defaults["childcare_per_kid"]
+    st.session_state["food"] = defaults["food"]
+    st.session_state["medical"] = defaults["medical"]
+    st.session_state["misc"] = defaults["misc"]
 
-# --- DYNAMIC POLICY CONSTANTS (2026 Nebraska Frameworks) ---
-# Scale Federal Poverty Level (FPL) guidelines by household size (1 adult + N children)
-fpl_matrix = {1: 1718.00, 2: 2153.00, 3: 2588.00, 4: 3023.00}
-FPL_MONTHLY_BASE = fpl_matrix.get(num_children, 2153.00)
+# Use session state to handle manual overrides vs dynamic resets cleanly
+rent_val = st.sidebar.slider("Housing & Utilities ($/mo)", 500, 4000, st.session_state.get("rent", defaults["rent"]), 50)
+childcare_val = st.sidebar.slider("Childcare Cost Per Child ($/mo)", 200, 2000, st.session_state.get("childcare", defaults["childcare_per_kid"]), 50)
+food_val = st.sidebar.slider("Food & Groceries ($/mo)", 200, 2500, st.session_state.get("food", defaults["food"]), 50)
+medical_val = st.sidebar.slider("Private Health Insurance Risk ($/mo)", 100, 2000, st.session_state.get("medical", defaults["medical"]), 25)
+misc_val = st.sidebar.slider("Other Basic Needs / Transport ($/mo)", 100, 1500, st.session_state.get("misc", defaults["misc"]), 25)
 
-MEDICAID_LIMIT_PCT = 1.38
-SNAP_LIMIT_PCT = 1.65
-CCAP_LIMIT_PCT = 1.85
-TANF_LIMIT_BASE = 1132.50 + (393.00 * num_children)  # Nebraska CPI updated standard
+# --- APP TEXT CLARIFICATIONS ---
+with st.expander("ℹ️ What is 'Private Health Insurance Risk'?"):
+    st.markdown("""
+    When an individual qualifies for **Medicaid**, their premium, deductible, and prescription costs are **$0**. 
+    The moment their income crosses the cliff and they lose Medicaid, they must transition to a workplace or commercial health plan. 
+    This slider reflects the monthly premium cost **PLUS** the calculated out-of-pocket financial exposure (copays and deductibles) they must now pay.
+    """)
+
+# --- DYNAMIC CALCULATION CORE ---
+FPL_MONTHLY_BASE = defaults["fpl"]
+MEDICAID_LIMIT_PCT, SNAP_LIMIT_PCT, CCAP_LIMIT_PCT = 1.38, 1.65, 1.85
+TANF_LIMIT_BASE = 1132.50 + (393.00 * num_children)
+
+total_childcare_market = childcare_val * num_children
+STARTING_SURVIVAL_NEED = rent_val + total_childcare_market + food_val + medical_val + misc_val
 
 # Baseline Subsidy Maximum Values
 VAL_TANF = 300.00 + (100.00 * num_children)
 VAL_SNAP = 250.00 * num_children
-VAL_MEDICAID = medical_cost  # Tied directly to the user's customized private health cost slider
+VAL_MEDICAID = medical_val
 VAL_CCAP = total_childcare_market
 
-# --- SIMULATION ENGINE ---
 data = []
-
 for year in range(1, 6):
-    # Scale hourly wage and gross earnings
-    wage = current_wage * ((1 + annual_raise) ** (year - 1))
+    # Calculate raises sequentially
+    if raise_type == "Percentage (%)":
+        wage = current_wage * ((1 + annual_raise_pct) ** (year - 1))
+    else:
+        wage = current_wage + (annual_raise_flat * (year - 1))
+        
     gross_monthly_earnings = (wage * hours_per_week * 52) / 12
-    
-    # Compound parameters by annual inflation
     inflated_survival_need = STARTING_SURVIVAL_NEED * ((1 + inflation_rate) ** (year - 1))
     current_fpl = FPL_MONTHLY_BASE * ((1 + inflation_rate) ** (year - 1))
     
@@ -85,7 +124,7 @@ for year in range(1, 6):
     if gross_monthly_earnings <= (CCAP_LIMIT_PCT * current_fpl):
         ccap_received = VAL_CCAP
         if gross_monthly_earnings > current_fpl:
-            ccap_received -= (0.07 * gross_monthly_earnings)  # Nebraska 7% family fee
+            ccap_received -= (0.07 * gross_monthly_earnings)
     else:
         ccap_received = 0.0
         cliffs_hit.append("Childcare Subsidy")
@@ -93,7 +132,6 @@ for year in range(1, 6):
     total_benefits_value = tanf_received + snap_received + medicaid_received + ccap_received
     net_resources = gross_monthly_earnings + total_benefits_value
     
-    # Track the Bridge Deficit Requirement
     if net_resources < inflated_survival_need:
         bridge_fund_needed = inflated_survival_need - net_resources
         status_msg = "🚨 Income Deficit"
@@ -144,11 +182,23 @@ with col_metrics:
     )
     st.info(f"Target Monthly Self-Sufficiency Needed: ${STARTING_SURVIVAL_NEED:,.2f}")
 
+# --- NEW EXPANDED EXPLICIT STATE LIMIT DETAILS ---
+st.markdown("---")
+st.subheader("📋 Context Matrix: Dynamic Nebraska Program Limits & Thresholds")
+st.markdown(f"""
+Based on a household size of **1 Adult and {num_children} Children**, the active legal limits 
+determining whether a family hits a cliff drop this year include:
+*   **TANF/ADC Cash Assistance Cutoff:** **${TANF_LIMIT_BASE:,.2f} / month** gross.
+*   **Medicaid Expansion Threshold (138% FPL):** **${(MEDICAID_LIMIT_PCT * FPL_MONTHLY_BASE):,.2f} / month** gross.
+*   **SNAP Food Assistance Eligibility Line (165% FPL):** **${(SNAP_LIMIT_PCT * FPL_MONTHLY_BASE):,.2f} / month** gross.
+*   **Childcare Subsidy Entry Threshold (185% FPL via LB 304):** **${(CCAP_LIMIT_PCT * FPL_MONTHLY_BASE):,.2f} / month** gross.
+""")
+
 # --- THE VISUAL LINE CHART ---
 st.markdown("---")
 st.subheader("📉 The Benefit Cliff Visualization: Total Resources vs. Local Survival Threshold")
 
-wage_axis = np.linspace(12.0, 40.0, 150)
+wage_axis = np.linspace(12.0, 50.0, 200)
 plot_points = []
 
 for w in wage_axis:
@@ -173,7 +223,7 @@ chart_df = pd.DataFrame(plot_points)
 st.line_chart(
     chart_df, 
     x="Hourly Wage ($)", 
-    y=["Total Household Resources ($)", "Baseline Cost of Living ($)"],
-    color=["#ff4b4b", "#00c0f2"]
+y=["Total Household Resources ($)", "Baseline Cost of Living ($)"],
+color=["#ff4b4b", "#00c0f2"]
 )
 st.caption("🔴 Red Line = Total resources available. 🔵 Blue Line = Your customized cost of living threshold. Sharp structural drops indicate active benefit cliff zones.")

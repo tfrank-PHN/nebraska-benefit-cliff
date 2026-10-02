@@ -1,105 +1,180 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 
-# Set page title and layout
+# Set up page and layout
 st.set_page_config(page_title="Nebraska Benefit Cliff Simulator", layout="wide")
 
-st.title("🌾 Nebraska Benefit Cliff & Trajectory Simulator")
+st.title("🌾 Nebraska Public Benefits & Cliff Trajectory Dashboard")
 st.markdown("""
-This interactive simulation shows how wage increases can paradoxically throw a single parent with 2 children into a deep financial gap, 
-and calculates the exact 'Bridge Fund' required to keep them financially stable until they reach self-sufficiency.
+This model illustrates the financial trajectory of a single parent with 2 children in Nebraska over a 5-year career horizon. 
+It calculates compounding inflation, tracks the exact program causing a benefit cliff, and visualizes the net resource drops for policy makers.
 """)
 
-# Sidebar - User Inputs
-st.sidebar.header("📊 Household Parameters")
+# --- SIDEBAR CONTROLS ---
+st.sidebar.header("📊 Interactive Parameters")
 current_wage = st.sidebar.slider("Starting Hourly Wage ($)", min_value=12.0, max_value=35.0, value=16.0, step=0.50)
 hours_per_week = st.sidebar.number_input("Hours Worked Per Week", value=40, step=1)
 annual_raise = st.sidebar.slider("Annual Wage Increase (%)", min_value=1.0, max_value=5.0, value=2.0, step=0.5) / 100
+inflation_rate = st.sidebar.slider("Annual Inflation / Cost of Living Rise (%)", min_value=1.0, max_value=5.0, value=3.0, step=0.5) / 100
 
-# Constants based on Nebraska 2026 Policy Frameworks (Family of 3)
-FPL_MONTHLY = 2153.00  # 2026 Federal Poverty Level for Family of 3 estimate
-MEDICAID_LIMIT = 1.38 * FPL_MONTHLY
-SNAP_LIMIT = 1.65 * FPL_MONTHLY
-CCAP_LIMIT = 1.85 * FPL_MONTHLY
-TANF_LIMIT = 1525.50  # Updated Standard of Need base
+# --- POLICY CONSTANTS (2026 Nebraska Frameworks - Family of 3) ---
+FPL_MONTHLY_BASE = 2153.00  
+MEDICAID_LIMIT_PCT = 1.38
+SNAP_LIMIT_PCT = 1.65
+CCAP_LIMIT_PCT = 1.85
+TANF_LIMIT_BASE = 1525.50  
 
-# Market Value of Subsidies (Real-World Out of Pocket Risk)
+# Baseline Market Values of Aid / Out-Of-Pocket Protection
 VAL_TANF = 500.00
 VAL_SNAP = 600.00
-VAL_MEDICAID = 650.00  # Includes average out-of-pocket medical risk / copays
-VAL_CCAP = 1600.00     # Private market cost for 2 children in Nebraska
+VAL_MEDICAID = 650.00  # Reflects out-of-pocket medical exposure/deductibles
+VAL_CCAP = 1600.00     # Real-world market rate for 2 kids in NE
 
-# Self-Sustained Target Baseline
-SELF_SUSTAINED_THRESHOLD = 5000.00  # Total required monthly take-home to survive without assistance
+# Survival Base Needs
+STARTING_SURVIVAL_NEED = 5000.00  
 
-# Calculations over a 5-Year Horizon
+# --- SIMULATION ENGINE ---
 data = []
+chart_data = []
+
+# Generate sequential rows for the 5-year outlook
 for year in range(1, 6):
-    # Apply cumulative annual raises
+    # Scale variables by inflation and raises over time
     wage = current_wage * ((1 + annual_raise) ** (year - 1))
     gross_monthly_earnings = (wage * hours_per_week * 52) / 12
     
-    # Evaluate benefits based on strict Nebraska caps
-    tanf_received = VAL_TANF if gross_monthly_earnings <= TANF_LIMIT else 0.0
-    snap_received = VAL_SNAP if gross_monthly_earnings <= SNAP_LIMIT else 0.0
-    medicaid_received = VAL_MEDICAID if gross_monthly_earnings <= MEDICAID_LIMIT else 0.0
-    ccap_received = VAL_CCAP if gross_monthly_earnings <= CCAP_LIMIT else 0.0
+    # Compound the cost of living baseline by inflation each year
+    inflated_survival_need = STARTING_SURVIVAL_NEED * ((1 + inflation_rate) ** (year - 1))
+    current_fpl = FPL_MONTHLY_BASE * ((1 + inflation_rate) ** (year - 1))
     
-    # Subtract 7% CCAP family fee if they still qualify for childcare aid
-    if ccap_received > 0 and gross_monthly_earnings > FPL_MONTHLY:
-        ccap_received -= (0x07 * gross_monthly_earnings) / 100
+    # Tracking exact cliff triggers
+    cliffs_hit = []
+    
+    # 1. TANF Evaluation
+    if gross_monthly_earnings <= TANF_LIMIT_BASE:
+        tanf_received = VAL_TANF
+    else:
+        tanf_received = 0.0
+        cliffs_hit.append("TANF/ADC Cash Assist")
         
-    total_benefits = tanf_received + snap_received + medicaid_received + ccap_received
-    net_resources = gross_monthly_earnings + total_benefits
+    # 2. Medicaid Evaluation
+    if gross_monthly_earnings <= (MEDICAID_LIMIT_PCT * current_fpl):
+        medicaid_received = VAL_MEDICAID
+    else:
+        medicaid_received = 0.0
+        cliffs_hit.append("Medicaid (Heritage Health)")
+        
+    # 3. SNAP Evaluation
+    if gross_monthly_earnings <= (SNAP_LIMIT_PCT * current_fpl):
+        snap_received = VAL_SNAP
+    else:
+        snap_received = 0.0
+        cliffs_hit.append("SNAP Food Aid")
+        
+    # 4. Childcare Evaluation
+    if gross_monthly_earnings <= (CCAP_LIMIT_PCT * current_fpl):
+        ccap_received = VAL_CCAP
+        # Apply Nebraska 7% copay rule if earning over poverty line
+        if gross_monthly_earnings > current_fpl:
+            ccap_received -= (0.07 * gross_monthly_earnings)
+    else:
+        ccap_received = 0.0
+        cliffs_hit.append("Childcare Subsidy (CCAP)")
+
+    total_benefits_value = tanf_received + snap_received + medicaid_received + ccap_received
+    net_resources = gross_monthly_earnings + total_benefits_value
     
-    # Calculate Cliff Cost / Bridge Fund needed to keep family at a stable baseline
-    if net_resources < SELF_SUSTAINED_THRESHOLD:
-        bridge_fund_needed = SELF_SUSTAINED_THRESHOLD - net_resources
-        status = "In the Cliff Gap"
+    # Calculate the exact resource gap accounting for inflation over time
+    if net_resources < inflated_survival_need:
+        bridge_fund_needed = inflated_survival_need - net_resources
+        status_msg = "🚨 Income Deficit"
     else:
         bridge_fund_needed = 0.0
-        status = "Self-Sustained"
+        status_msg = "✅ Self-Sustained"
         
+    # Determine the primary active cliff for reporting
+    primary_fault = ", ".join(cliffs_hit) if cliffs_hit else "None (Fully Assisted)"
+    if status_msg == "✅ Self-Sustained":
+        primary_fault = "N/A - Self Sufficient"
+
     data.append({
         "Year": f"Year {year}",
         "Hourly Wage": f"${wage:.2f}",
-        "Gross Monthly Wages": gross_monthly_earnings,
-        "Total Public Assistance Value": total_benefits,
-        "Total Resources": net_resources,
-        "Monthly Bridge Subsidy Cost": bridge_fund_needed,
-        "Status": status
+        "Gross Monthly Earnings": gross_monthly_earnings,
+        "Total Public Assistance Remaining": total_benefits_value,
+        "Total Household Resources": net_resources,
+        "Required Cost of Living (With Inflation)": inflated_survival_need,
+        "Monthly Bridge Fund Needed": bridge_fund_needed,
+        "Active Program Cliffs Triggered": primary_fault
     })
 
 df = pd.DataFrame(data)
 
-# Layout Split into Data Columns
-col1, col2 = st.columns([2, 1])
+# --- USER INTERFACE LAYOUT ---
+col_table, col_metrics = st.columns([2.5, 1])
 
-with col1:
-    st.subheader("📈 5-Year Trajectory and Cliff Impact")
-    # Display the primary calculation matrix
+with col_table:
+    st.subheader("📊 5-Year Financial Calculation Matrix")
     st.dataframe(
         df.style.format({
-            "Gross Monthly Wages": "${:.2f}",
-            "Total Public Assistance Value": "${:.2f}",
-            "Total Resources": "${:.2f}",
-            "Monthly Bridge Subsidy Cost": "${:.2f}"
+            "Gross Monthly Earnings": "${:.2f}",
+            "Total Public Assistance Remaining": "${:.2f}",
+            "Total Household Resources": "${:.2f}",
+            "Required Cost of Living (With Inflation)": "${:.2f}",
+            "Monthly Bridge Fund Needed": "${:.2f}"
         }),
-        use_container_width=True
+        use_container_width=True,
+        hide_index=True
     )
 
-with col2:
-    st.subheader("📉 Policy Insights for Lawmakers")
-    total_bridge_cost = df["Monthly Bridge Subsidy Cost"].map(float).sum() * 12
-    
+with col_metrics:
+    st.subheader("🏛️ Policy Aggregates")
+    cumulative_bridge_cost = df["Monthly Bridge Fund Needed"].sum() * 12
     st.metric(
-        label="Total 5-Year Bridge Funding Required", 
-        value=f"${total_bridge_cost:,.2f}",
-        help="The total financial support needed over 5 years to smoothly transition this single household off public aid without facing a resource crash."
+        label="Total 5-Year Bridge Funding Cost",
+        value=f"${cumulative_bridge_cost:,.2f}",
+        help="The total capital needed to systematically absorb the economic cliffs and keep this household out of an active financial deficit over 5 years."
     )
+    st.markdown("""
+    **Understanding the Triggers:**
+    * Watch the **Active Program Cliffs Triggered** column in the table. 
+    * When a program name appears there, it means the worker's earnings crossed that state threshold, stripping away that entire benefit program's financial baseline value.
+    """)
+
+# --- THE VISUAL LINE CHART (WHAT LAWMAKERS NEED TO SEE) ---
+st.markdown("---")
+st.subheader("📉 The Benefit Cliff Visualization: Total Resources vs. Inflation Baseline")
+
+# Create a dense data grid for a smooth line chart plot across varying wages
+wage_axis = np.linspace(12.0, 35.0, 150)
+plot_points = []
+
+for w in wage_axis:
+    gross = (w * hours_per_week * 52) / 12
     
-    # Dynamic text warning based on cliff event
-    if any(df["Status"] == "In the Cliff Gap"):
-        st.error("⚠️ Warning: The worker enters a benefit cliff gap during this 5-year timeline. A raise results in an overall loss of household stability.")
-    else:
-        st.success("✅ The current starting wage allows the household to cleanly scale past cliffs over the 5-year period.")
+    # Apply baseline rules for standalone chart reference mapping
+    t_val = VAL_TANF if gross <= TANF_LIMIT_BASE else 0
+    m_val = VAL_MEDICAID if gross <= (MEDICAID_LIMIT_PCT * FPL_MONTHLY_BASE) else 0
+    s_val = VAL_SNAP if gross <= (SNAP_LIMIT_PCT * FPL_MONTHLY_BASE) else 0
+    c_val = VAL_CCAP if gross <= (CCAP_LIMIT_PCT * FPL_MONTHLY_BASE) else 0
+    if c_val > 0 and gross > FPL_MONTHLY_BASE:
+        c_val -= (0.07 * gross)
+        
+    tot_res = gross + t_val + m_val + s_val + c_val
+    plot_points.append({
+        "Hourly Wage ($)": w,
+        "Total Household Resources ($)": tot_res,
+        "Baseline Cost of Living ($)": STARTING_SURVIVAL_NEED
+    })
+
+chart_df = pd.DataFrame(plot_points)
+
+# Render native Streamlit line chart
+st.line_chart(
+    chart_df, 
+    x="Hourly Wage ($)", 
+    y=["Total Household Resources ($)", "Baseline Cost of Living ($)"],
+    color=["#ff4b4b", "#00c0f2"]
+)
+st.caption("🔴 Red Line = Total available resources. 🔵 Blue Line = What it actually costs to survive. Notice the sharp drops where the red line plummets below survival needs when a cliff is broken.")

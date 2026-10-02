@@ -199,11 +199,12 @@ determining whether a family hits a cliff drop include:
 *   **Childcare Subsidy Entry Threshold (185% FPL via LB 304):** **\\${(CCAP_LIMIT_PCT * FPL_MONTHLY_BASE):,.2f} / month** gross income limit.
 """)
 
-# --- THE UNIFIED VISUAL AREA CHART ENGINE ---
+# --- THE UNIFIED VISUAL STACKED BAR CHART ENGINE ---
 st.markdown("---")
-st.subheader("📉 The Benefit Cliff Visualization: Total Resources vs. Local Survival Threshold")
+st.subheader("📉 The Stacked Resource Visualization: Dependency Evolution vs. Cost of Living")
 
-wage_axis = np.linspace(12.0, 50.0, 250)
+# Generate 35 key points for clean vertical columns across standard wages
+wage_axis = np.linspace(12.0, 50.0, 35)
 plot_points = []
 
 for w in wage_axis:
@@ -217,24 +218,22 @@ for w in wage_axis:
         c_val -= (0.07 * gross)
         
     tot_public = t_val + m_val + s_val + c_val
-    tot_employer = emp_childcare_subsidy + emp_tuition + emp_transit + emp_bridge
-    
-# We compile the fields cumulatively so st.area_chart stacks them perfectly
+tot_employer = emp_childcare_subsidy + emp_tuition + emp_transit + emp_bridge
 plot_points.append({
-"Hourly Wage ($)": w,
-"1. Gross Earned Income": gross,
-"2. Public Assistance Layer": tot_public,
-"3. Employer Fringe Layer": tot_employer,
-"Survival Threshold Baseline": STARTING_SURVIVAL_NEED
+"Hourly Wage": w,
+"Wages": gross,
+"Public Assistance": tot_public,
+"Employer Fringe": tot_employer,
+"Survival Needs Baseline": STARTING_SURVIVAL_NEED
 })
 chart_df = pd.DataFrame(plot_points)
-# Render layers cleanly inside a native Streamlit area chart component
-st.area_chart(
+Render a robust stacked bar chart with custom colors
+st.bar_chart(
 chart_df,
-x="Hourly Wage ($)",
-y=["1. Gross Earned Income", "2. Public Assistance Layer", "3. Employer Fringe Layer", "Survival Threshold Baseline"],
+x="Hourly Wage",
+y=["Wages", "Public Assistance", "Employer Fringe", "Survival Needs Baseline"],
 color=["#2ecc71", "#ff4b4b", "#f1c40f", "#00c0f2"]
 )
 st.caption("""
-🟩 Green Area = Gross Earned Wages. 🟥 Red Area = State Public Aid Value Remaining. 🟨 Yellow Area = Employer Non-Taxable Fringe Additions. 🔵 Light Blue Area/Line boundary = Survival Threshold Cost.
+🟩 Green Block = Gross Wages. 🟥 Red Block = Public Benefits Value. 🟨 Yellow Block = Employer Voluntary Perks. 🔵 Blue Block/Border = Cost of Living Baseline.
 """)

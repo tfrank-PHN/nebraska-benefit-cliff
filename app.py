@@ -228,7 +228,8 @@ plot_points.append({
 "Public Assistance Layer": tot_public,
 "Employer Fringe Layer": tot_employer,
 "Survival Threshold Baseline": STARTING_SURVIVAL_NEED
-})chart_df = pd.DataFrame(plot_points)
+})
+chart_df = pd.DataFrame(plot_points)
 Render stacked areas + line reference layer via Streamlit native tools
 st.area_chart(
 chart_df,
@@ -242,6 +243,7 @@ x="Hourly Wage ($)",
 y=["Survival Threshold Baseline"],
 color=["#00c0f2"]
 )
-st.caption("""🟩 Green Area = Gross Earned Wages. 🟥 Red Area = State Public Aid Value Remaining. 🟨 Yellow Area = Employer Non-Taxable Fringe Additions. 🔵 Blue Line = Cost of Living.
+st.caption("""
+🟩 Green Area = Gross Earned Wages. 🟥 Red Area = State Public Aid Value Remaining. 🟨 Yellow Area = Employer Non-Taxable Fringe Additions. 🔵 Blue Line = Cost of Living.
 Notice how adjusting the Employer Sliders pushes the overall resource layers safely upwards over the blue baseline without shifting or shrinking the state's public aid footprints.
 """)

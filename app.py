@@ -73,6 +73,7 @@ medical_val = st.sidebar.slider("Private Health Insurance Risk ($/mo)", 100, 250
 misc_val = st.sidebar.slider("Other Basic Needs / Transport ($/mo)", 100, 2000, key="misc_key", step=25)
 
 # --- SIDEBAR: NEW EMPLOYER INCENTIVE ACTION PANEL ---
+st.sidebar.markdown("---")
 st.sidebar.header("💼 Employer Voluntary Incentives")
 st.sidebar.markdown("*Simulate non-taxable fringe benefits that bypass standard public benefit arithmetic rules.*")
 emp_childcare_subsidy = st.sidebar.slider("Direct Childcare Support (Sec. 129) ($/mo)", 0, 1000, 0, 50)
@@ -204,8 +205,8 @@ determining whether a family hits a cliff drop include:
 st.markdown("---")
 st.subheader("📉 The Benefit Cliff Visualization: Total Resources vs. Local Survival Threshold")
 
-# Create a smooth density scale across wages from $12 to $50
-wage_axis = np.linspace(12.0, 50.0, 40)
+# Generate 35 clean evaluation columns across standard wages
+wage_axis = np.linspace(12.0, 50.0, 35)
 plot_points = []
 
 for w in wage_axis:
@@ -220,7 +221,7 @@ for w in wage_axis:
         
     tot_public = t_val + m_val + s_val + c_val
 tot_employer = emp_childcare_subsidy + emp_tuition + emp_transit + emp_bridge
-# Restructure data in 'long format' so Altair can stack neatly
+# Pack parameters inside data series matrix configurations
 plot_points.append({"Hourly Wage": w, "Resource Value": gross, "Type": "1. Gross Earned Wages"})
 plot_points.append({"Hourly Wage": w, "Resource Value": tot_public, "Type": "2. Public Assistance"})
 plot_points.append({"Hourly Wage": w, "Resource Value": tot_employer, "Type": "3. Employer Fringe"})

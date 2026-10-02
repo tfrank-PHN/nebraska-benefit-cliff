@@ -11,7 +11,6 @@ This advanced model illustrates the 5-year financial trajectory of a single pare
 Configure realistic cost frameworks, simulate custom employer incentives, and visualize stacked resource allocation.
 """)
 
-# --- STATE AND POLICY COST MATRIX DICTIONARY (2026 ESTIMATES FOR NEBRASKA) ---
 household_defaults = {
     1: {"fpl": 1718.00, "rent": 1000, "childcare_per_kid": 800, "food": 450, "medical": 400, "misc": 350},
     2: {"fpl": 2153.00, "rent": 1200, "childcare_per_kid": 800, "food": 700, "medical": 550, "misc": 450},
@@ -21,7 +20,6 @@ household_defaults = {
     6: {"fpl": 3893.00, "rent": 2000, "childcare_per_kid": 600, "food": 1550, "medical": 800, "misc": 650}
 }
 
-# --- CALLBACK RESET LOGIC FOR COMPONENT STATE SYNCHRONIZATION ---
 def apply_family_size_defaults():
     size = st.session_state.get("num_kids_key", 2)
     defs = household_defaults[size]
@@ -34,7 +32,6 @@ def apply_family_size_defaults():
 if "rent_key" not in st.session_state:
     apply_family_size_defaults()
 
-# --- SIDEBAR: HOUSEHOLD PROFILE ---
 st.sidebar.header("👪 Household Profile")
 num_children = st.sidebar.slider(
     "Number of Dependent Children", 
@@ -44,7 +41,6 @@ num_children = st.sidebar.slider(
 
 defaults = household_defaults[num_children]
 
-# --- SIDEBAR: PROGRESSION & WAGES ---
 st.sidebar.markdown("---")
 st.sidebar.header("📈 Career Progression & Raises")
 current_wage = st.sidebar.slider("Starting Hourly Wage ($)", min_value=12.0, max_value=45.0, value=16.0, step=0.50)
@@ -60,7 +56,6 @@ else:
 
 inflation_rate = st.sidebar.slider("Annual Inflation Rate (%)", min_value=1.0, max_value=15.0, value=3.0, step=0.5) / 100
 
-# --- SIDEBAR: COST SLIDERS WITH INTEGRATED RESET ---
 st.sidebar.markdown("---")
 st.sidebar.header("🏠 Monthly Private-Market Costs")
 st.sidebar.button("🔄 Reset Costs to Selected Family Size Defaults", on_click=apply_family_size_defaults)
@@ -71,7 +66,6 @@ food_val = st.sidebar.slider("Food & Groceries ($/mo)", 200, 3000, key="food_key
 medical_val = st.sidebar.slider("Private Health Insurance Risk ($/mo)", 100, 2500, key="medical_key", step=25)
 misc_val = st.sidebar.slider("Other Basic Needs / Transport ($/mo)", 100, 2000, key="misc_key", step=25)
 
-# --- SIDEBAR: EMPLOYER INCENTIVE PANEL ---
 st.sidebar.header("💼 Employer Voluntary Incentives")
 st.sidebar.markdown("*Simulate non-taxable fringe benefits that bypass standard public benefit arithmetic rules.*")
 emp_childcare_subsidy = st.sidebar.slider("Direct Childcare Support (Sec. 129) ($/mo)", 0, 1000, 0, 50)
@@ -79,7 +73,6 @@ emp_tuition = st.sidebar.slider("Tuition Reimbursement Allowance (Sec. 127) ($/m
 emp_transit = st.sidebar.slider("Transit / Gas Card Commuter Benefit ($/mo)", 0, 300, 0, 25)
 emp_bridge = st.sidebar.slider("Private Transition 'Bridge Fund' Stipend ($/mo)", 0, 1000, 0, 50)
 
-# --- DYNAMIC CALCULATION CORE ---
 FPL_MONTHLY_BASE = defaults["fpl"]
 MEDICAID_LIMIT_PCT, SNAP_LIMIT_PCT, CCAP_LIMIT_PCT = 1.38, 1.65, 1.85
 TANF_LIMIT_BASE = 1132.50 + (393.00 * num_children)
@@ -91,7 +84,6 @@ medicaid_cutoff_val = MEDICAID_LIMIT_PCT * FPL_MONTHLY_BASE
 snap_cutoff_val = SNAP_LIMIT_PCT * FPL_MONTHLY_BASE
 ccap_cutoff_val = CCAP_LIMIT_PCT * FPL_MONTHLY_BASE
 
-# Baseline Subsidy Max Values
 VAL_TANF = 300.00 + (100.00 * num_children)
 VAL_SNAP = 250.00 * num_children
 VAL_MEDICAID = medical_val
@@ -164,7 +156,6 @@ for year in range(1, 6):
 
 df = pd.DataFrame(data)
 
-# --- USER INTERFACE LAYOUT ---
 col_table, col_metrics = st.columns([2.5, 1])
 
 with col_table:
@@ -191,7 +182,6 @@ with col_metrics:
     )
     st.info(f"Target Monthly Self-Sufficiency Baseline: ${STARTING_SURVIVAL_NEED:,.2f}")
 
-# --- TEXT POLICY CONTEXT FOR LAWMAKERS ---
 st.markdown("---")
 st.subheader("📋 Context Matrix: Dynamic Nebraska Program Limits & Thresholds")
 st.markdown(f"""
@@ -202,11 +192,9 @@ Based on a household size of **1 Adult and {num_children} Children**, the active
 *   **Childcare Subsidy Entry Threshold (185% FPL via LB 304):** **\\${ccap_cutoff_val:,.2f} / month** gross income limit.
 """)
 
-# --- THE ADVANCED ALTAIR LAYERED CHART ENGINE ---
 st.markdown("---")
 st.subheader("📉 The Benefit Cliff Visualization: Total Resources vs. Local Survival Threshold")
 
-# Generate 35 clean evaluation columns across standard wages
 wage_axis = np.linspace(12.0, 50.0, 35)
 plot_points = []
 
@@ -220,19 +208,20 @@ for w in wage_axis:
     if c_val > 0 and gross > FPL_MONTHLY_BASE:
         c_val -= (0.07 * gross)
         
-tot_public = t_val + m_val + s_val + c_val
-tot_employer = emp_childcare_subsidy + emp_tuition + emp_transit + emp_bridge
-# Pack parameters inside data series matrix configurations
-plot_points.append({"Hourly Wage": w, "Resource Value": gross, "Type": "1. Gross Earned Wages"})
-plot_points.append({"Hourly Wage": w, "Resource Value": tot_public, "Type": "2. Public Assistance"})
-plot_points.append({"Hourly Wage": w, "Resource Value": tot_employer, "Type": "3. Employer Fringe"})
+    tot_public = t_val + m_val + s_val + c_val
+    tot_employer = emp_childcare_subsidy + emp_tuition + emp_transit + emp_bridge
+    
+    plot_points.append({"Hourly Wage": w, "Resource Value": gross, "Type": "1. Gross Earned Wages"})
+    plot_points.append({"Hourly Wage": w, "Resource Value": tot_public, "Type": "2. Public Assistance"})
+    plot_points.append({"Hourly Wage": w, "Resource Value": tot_employer, "Type": "3. Employer Fringe"})
+
 chart_df = pd.DataFrame(plot_points)
-Create a flat reference dataset for the baseline cost line
+
 line_df = pd.DataFrame({
-"Hourly Wage": wage_axis,
-"Cost Value": [STARTING_SURVIVAL_NEED] * len(wage_axis)
+    "Hourly Wage": wage_axis,
+    "Cost Value": [STARTING_SURVIVAL_NEED] * len(wage_axis)
 })
-Layer 1: The Stacked Bars for the Resource Components
+
 bars = alt.Chart(chart_df).mark_bar(size=14).encode(
 x=alt.X("Hourly Wage:Q", title="Hourly Wage ($)"),
 y=alt.Y("Resource Value:Q", title="Total Monthly Resources ($)", stack=True),
@@ -241,12 +230,10 @@ domain=["1. Gross Earned Wages", "2. Public Assistance", "3. Employer Fringe"],
 range=["#2ecc71", "#ff4b4b", "#f1c40f"]
 ), title="Resource Layer")
 )
-Layer 2: The Independent Solid Line for Cost of Living
 line = alt.Chart(line_df).mark_line(color="#00c0f2", strokeWidth=3.5).encode(
 x="Hourly Wage:Q",
 y="Cost Value:Q"
 )
-Overlay both components onto the screen inside a single layout window
 st.altair_chart(bars + line, use_container_width=True)
 st.caption("""
 🟩 Green Bars = Gross Wages. 🟥 Red Bars = Public Assistance Value. 🟨 Yellow Bars = Employer Incentives. 🔵 Solid Blue Line = Real Out-Of-Pocket Cost of Living Baseline.

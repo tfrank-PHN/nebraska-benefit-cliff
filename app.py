@@ -211,24 +211,26 @@ for w in wage_axis:
     tot_public = t_val + m_val + s_val + c_val
     tot_employer = emp_childcare_subsidy + emp_tuition + emp_transit + emp_bridge
     
-    plot_points.append({"Hourly Wage": w, "Resource Value": gross, "Type": "1. Gross Earned Wages"})
-    plot_points.append({"Hourly Wage": w, "Resource Value": tot_public, "Type": "2. Public Assistance"})
-    plot_points.append({"Hourly Wage": w, "Resource Value": tot_employer, "Type": "3. Employer Fringe"})
+    # Sorting tags mapped alphabetically to fix visual order layers
+    plot_points.append({"Hourly Wage": w, "Resource Value": gross, "Type": "A. Gross Earned Wages"})
+    plot_points.append({"Hourly Wage": w, "Resource Value": tot_public, "Type": "B. Public Assistance"})
+    plot_points.append({"Hourly Wage": w, "Resource Value": tot_employer, "Type": "C. Employer Fringe"})
 
 chart_df = pd.DataFrame(plot_points)
 
 line_df = pd.DataFrame({
     "Hourly Wage": wage_axis,
-    "Cost Value": [STARTING_SURVIVAL_NEED] * len(wage_axis)
+"Cost Value": [STARTING_SURVIVAL_NEED] * len(wage_axis)
 })
-
+Sorted explicitly to make wages the structural foundation layer
 bars = alt.Chart(chart_df).mark_bar(size=14).encode(
 x=alt.X("Hourly Wage:Q", title="Hourly Wage ($)"),
 y=alt.Y("Resource Value:Q", title="Total Monthly Resources ($)", stack=True),
 color=alt.Color("Type:N", scale=alt.Scale(
-domain=["1. Gross Earned Wages", "2. Public Assistance", "3. Employer Fringe"],
+domain=["A. Gross Earned Wages", "B. Public Assistance", "C. Employer Fringe"],
 range=["#2ecc71", "#ff4b4b", "#f1c40f"]
-), title="Resource Layer")
+), title="Resource Layer"),
+order=alt.Order("Type:N", sort="ascending")
 )
 line = alt.Chart(line_df).mark_line(color="#00c0f2", strokeWidth=3.5).encode(
 x="Hourly Wage:Q",

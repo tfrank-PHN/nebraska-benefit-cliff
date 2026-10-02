@@ -228,8 +228,7 @@ plot_points.append({
 "Public Assistance Layer": tot_public,
 "Employer Fringe Layer": tot_employer,
 "Survival Threshold Baseline": STARTING_SURVIVAL_NEED
-})
-chart_df = pd.DataFrame(plot_points)
+})chart_df = pd.DataFrame(plot_points)
 Render stacked areas + line reference layer via Streamlit native tools
 st.area_chart(
 chart_df,

@@ -238,4 +238,75 @@ y="Cost Value:Q"
 st.altair_chart(bars + line, use_container_width=True)
 st.caption("""
 🟩 Green Bars = Gross Wages. 🟥 Red Bars = Public Assistance Value. 🟨 Yellow Bars = Employer Incentives. 🔵 Solid Blue Line = Real Out-Of-Pocket Cost of Living Baseline.
+""")# --- OPTIONAL BACKEND EXTENSION: EMPLOYER TURNOVER COST CALCULATOR ---
+
+st.markdown("---")
+st.subheader("🏢 Corporate Financial Impact: The Cost of Worker Turnover")
+st.markdown("""
+When a valued worker turns down a promotion or leaves your company due to a benefit cliff, your business incurs 
+substantial friction costs to replace them. Use this tool to calculate your company's hidden baseline losses.
 """)
+
+# Split the layout into interactive slider controls and calculation summaries
+col_calc_inputs, col_calc_outputs = st.columns([1.5, 1])
+
+with col_calc_inputs:
+    worker_role_type = st.selectbox(
+        "Select the General Position Tier:",
+        ["Entry-Level / Frontline Worker", "Mid-Level Specialist / Shift Supervisor", "Advanced Technical Role"]
+    )
+    
+    # Establish dynamic replacement baselines based on national SHRM workforce standards
+    if worker_role_type == "Entry-Level / Frontline Worker":
+        default_separation_cost = 4000.00
+    elif worker_role_type == "Mid-Level Specialist / Shift Supervisor":
+        default_separation_cost = 9500.00
+    else:
+        default_separation_cost = 15000.00
+        
+    custom_replacement_cost = st.slider(
+        "Estimated Total Cost to Replace One Worker ($):", 
+        min_value=1000, max_value=25000, value=int(default_separation_cost), step=500,
+        help="Includes recruiting ads, background checks, temporary agency fees, overtime for remaining staff, and manager training hours."
+    )
+    
+    annual_cliff_turnover_count = st.slider(
+        "Number of Employees Lost to Cliff Events Per Year:",
+        min_value=1, max_value=50, value=3, step=1,
+        help="How many workers quit, scale back hours, or decline promotions annually at your firm to protect their public benefits?"
+    )
+
+# Calculate corporate metrics based on user slider adjustments
+total_annual_turnover_loss = custom_replacement_cost * annual_cliff_turnover_count
+monthly_employer_fringe_total = emp_childcare_subsidy + emp_tuition + emp_transit + emp_bridge
+annual_employer_incentive_investment = monthly_employer_fringe_total * 12
+
+with col_calc_outputs:
+    st.markdown("#### 📉 Financial Summary Pass")
+    st.metric(
+        label="Your Annual Capital Lost to Turnover Friction",
+        value=f"${total_annual_turnover_loss:,.2f}",
+        delta="- Net Revenue Drag",
+        delta_color="inverse"
+    )
+    
+    st.metric(
+        label="Your Current Annual Investment in Fringe Benefits",
+        value=f"${annual_employer_incentive_investment:,.2f}",
+        help="The total annual cost of the voluntary employer incentives currently configured in your sidebar controls."
+    )
+    
+    # Render dynamic strategic guidance comparing losses to potential solutions
+    if annual_employer_incentive_investment < total_annual_turnover_loss:
+        st.success(f"""
+        💡 **Strategic ROI Insight:** Investing in non-taxable fringe benefits is highly cost-effective for your business. 
+        Your current benefit allocation costs **${annual_employer_incentive_investment:,.2f}/year**, which is significantly 
+        less than the **${total_annual_turnover_loss:,.2f}** you lose to turnover. By stabilizing your worker's benefits, 
+        you prevent them from quitting and save your business money.
+        """)
+    else:
+        st.warning("""
+        ⚠️ **Optimization Insight:** Your configured employer benefits currently exceed your baseline turnover costs. 
+        Consider optimizing your voluntary support levels or targeting these incentives specifically toward high-risk 
+        retention positions to maximize your corporate return on investment.
+        """)

@@ -72,7 +72,6 @@ medical_val = st.sidebar.slider("Private Health Insurance Risk ($/mo)", 100, 250
 misc_val = st.sidebar.slider("Other Basic Needs / Transport ($/mo)", 100, 2000, key="misc_key", step=25)
 
 # --- SIDEBAR: NEW EMPLOYER INCENTIVE ACTION PANEL ---
-st.sidebar.markdown("---")
 st.sidebar.header("💼 Employer Voluntary Incentives")
 st.sidebar.markdown("*Simulate non-taxable fringe benefits that bypass standard public benefit arithmetic rules.*")
 emp_childcare_subsidy = st.sidebar.slider("Direct Childcare Support (Sec. 129) ($/mo)", 0, 1000, 0, 50)
@@ -229,7 +228,7 @@ plot_points.append({
 "Survival Threshold Baseline": STARTING_SURVIVAL_NEED
 })
 chart_df = pd.DataFrame(plot_points)
-Render as a true stacked area visualization with a solid cutting reference line
+Render layers cleanly inside a native Streamlit area chart component
 st.area_chart(
 chart_df,
 x="Hourly Wage ($)",

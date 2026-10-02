@@ -3,7 +3,6 @@ import pandas as pd
 import numpy as np
 import altair as alt
 
-# Set up page and layout
 st.set_page_config(page_title="Advanced Nebraska Benefit Cliff Simulator", layout="wide")
 
 st.title("🌾 Comprehensive Nebraska Public Benefits & Cliff Trajectory Dashboard")
@@ -72,7 +71,7 @@ food_val = st.sidebar.slider("Food & Groceries ($/mo)", 200, 3000, key="food_key
 medical_val = st.sidebar.slider("Private Health Insurance Risk ($/mo)", 100, 2500, key="medical_key", step=25)
 misc_val = st.sidebar.slider("Other Basic Needs / Transport ($/mo)", 100, 2000, key="misc_key", step=25)
 
-# --- SIDEBAR: NEW EMPLOYER INCENTIVE ACTION PANEL ---
+# --- SIDEBAR: EMPLOYER INCENTIVE PANEL ---
 st.sidebar.header("💼 Employer Voluntary Incentives")
 st.sidebar.markdown("*Simulate non-taxable fringe benefits that bypass standard public benefit arithmetic rules.*")
 emp_childcare_subsidy = st.sidebar.slider("Direct Childcare Support (Sec. 129) ($/mo)", 0, 1000, 0, 50)
@@ -88,7 +87,6 @@ TANF_LIMIT_BASE = 1132.50 + (393.00 * num_children)
 total_childcare_market = childcare_val * num_children
 STARTING_SURVIVAL_NEED = rent_val + total_childcare_market + food_val + medical_val + misc_val
 
-# Calculated specific thresholds to ensure zero string template parsing errors downstream
 medicaid_cutoff_val = MEDICAID_LIMIT_PCT * FPL_MONTHLY_BASE
 snap_cutoff_val = SNAP_LIMIT_PCT * FPL_MONTHLY_BASE
 ccap_cutoff_val = CCAP_LIMIT_PCT * FPL_MONTHLY_BASE
@@ -198,10 +196,10 @@ st.markdown("---")
 st.subheader("📋 Context Matrix: Dynamic Nebraska Program Limits & Thresholds")
 st.markdown(f"""
 Based on a household size of **1 Adult and {num_children} Children**, the active legal limits determining whether a family hits a cliff drop include:
-*   **TANF/ADC Cash Assistance Cutoff:** **${TANF_LIMIT_BASE:,.2f} / month** gross income limit.
-*   **Medicaid Expansion Threshold (138% FPL):** **${medicaff_val:,.2f} / month** gross income limit if we trace standard parameters.
-*   **SNAP Food Assistance Eligibility Line (165% FPL):** **${snap_cutoff_val:,.2f} / month** gross income limit.
-*   **Childcare Subsidy Entry Threshold (185% FPL via LB 304):** **${ccap_cutoff_val:,.2f} / month** gross income limit.
+*   **TANF/ADC Cash Assistance Cutoff:** **\\${TANF_LIMIT_BASE:,.2f} / month** gross income limit.
+*   **Medicaid Expansion Threshold (138% FPL):** **\\${medicaid_cutoff_val:,.2f} / month** gross income limit.
+*   **SNAP Food Assistance Eligibility Line (165% FPL):** **\\${snap_cutoff_val:,.2f} / month** gross income limit.
+*   **Childcare Subsidy Entry Threshold (185% FPL via LB 304):** **\\${ccap_cutoff_val:,.2f} / month** gross income limit.
 """)
 
 # --- THE ADVANCED ALTAIR LAYERED CHART ENGINE ---
@@ -218,9 +216,10 @@ for w in wage_axis:
     t_val = VAL_TANF if gross <= TANF_LIMIT_BASE else 0
     m_val = VAL_MEDICAID if gross <= (MEDICAID_LIMIT_PCT * FPL_MONTHLY_BASE) else 0
     s_val = VAL_SNAP if gross <= (SNAP_LIMIT_PCT * FPL_MONTHLY_BASE) else 0
-c_val = VAL_CCAP if gross <= (CCAP_LIMIT_PCT * FPL_MONTHLY_BASE) else 0
-if c_val > 0 and gross > FPL_MONTHLY_BASE:
-c_val -= (0.07 * gross)
+    c_val = VAL_CCAP if gross <= (CCAP_LIMIT_PCT * FPL_MONTHLY_BASE) else 0
+    if c_val > 0 and gross > FPL_MONTHLY_BASE:
+        c_val -= (0.07 * gross)
+        
 tot_public = t_val + m_val + s_val + c_val
 tot_employer = emp_childcare_subsidy + emp_tuition + emp_transit + emp_bridge
 # Pack parameters inside data series matrix configurations

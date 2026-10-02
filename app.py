@@ -140,13 +140,11 @@ for year in range(1, 6):
     
     if net_resources < inflated_survival_need:
         bridge_fund_needed = inflated_survival_need - net_resources
-        status_msg = "🚨 Income Deficit"
     else:
         bridge_fund_needed = 0.0
-        status_msg = "✅ Self-Sustained"
-        
+
     primary_fault = ", ".join(cliffs_hit) if cliffs_hit else "None (Fully Assisted)"
-    if status_msg == "✅ Self-Sustained":
+    if net_resources >= inflated_survival_need:
         primary_fault = "N/A - Self Sufficient"
 
     data.append({
@@ -202,7 +200,7 @@ determining whether a family hits a cliff drop include:
 *   **Childcare Subsidy Entry Threshold (185% FPL via LB 304):** **\\${(CCAP_LIMIT_PCT * FPL_MONTHLY_BASE):,.2f} / month** gross income limit.
 """)
 
-# --- THE STACKED VISUAL AREA CHART ENGINE ---
+# --- THE UNIFIED VISUAL AREA CHART ENGINE ---
 st.markdown("---")
 st.subheader("📉 The Stacked Resource Visualization: Dependency Evolution vs. Cost of Living")
 
@@ -220,8 +218,9 @@ for w in wage_axis:
         c_val -= (0.07 * gross)
         
     tot_public = t_val + m_val + s_val + c_val
-tot_employer = emp_childcare_subsidy + emp_tuition + emp_transit + emp_bridge
-plot_points.append({
+    tot_employer = emp_childcare_subsidy + emp_tuition + emp_transit + emp_bridge
+    
+    plot_points.append({
 "Hourly Wage ($)": w,
 "Gross Earned Income": gross,
 "Public Assistance Layer": tot_public,
@@ -229,18 +228,13 @@ plot_points.append({
 "Survival Threshold Baseline": STARTING_SURVIVAL_NEED
 })
 chart_df = pd.DataFrame(plot_points)
-st.area_chart(
-chart_df,
-x="Hourly Wage ($)",
-y=["Gross Earned Income", "Public Assistance Layer", "Employer Fringe Layer"],
-color=["#2ecc71", "#ff4b4b", "#f1c40f"]
-)
+Render everything perfectly inside one unified line chart element
 st.line_chart(
 chart_df,
 x="Hourly Wage ($)",
-y=["Survival Threshold Baseline"],
-color=["#00c0f2"]
+y=["Gross Earned Income", "Public Assistance Layer", "Employer Fringe Layer", "Survival Threshold Baseline"],
+color=["#2ecc71", "#ff4b4b", "#f1c40f", "#00c0f2"]
 )
 st.caption("""
-🟩 Green Area = Gross Earned Wages. 🟥 Red Area = State Public Aid Value Remaining. 🟨 Yellow Area = Employer Non-Taxable Fringe Additions. 🔵 Blue Line = Cost of Living.
+🟩 Green Line = Gross Earned Wages. 🟥 Red Line = State Public Aid Value Remaining. 🟨 Yellow Line = Employer Non-Taxable Fringe Additions. 🔵 Light Blue Line = Cost of Living Baseline.
 """)

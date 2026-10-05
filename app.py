@@ -195,7 +195,7 @@ Based on a household size of **1 Adult and {num_children} Children**, the active
 st.markdown("---")
 st.subheader("📉 The Benefit Cliff Visualization: Total Resources vs. Local Survival Threshold")
 
-wage_axis = np.linspace(12.0, 50.0, 35)
+wage_axis = np.linspace(12.0, 30.0, 35)
 plot_points = []
 
 for w in wage_axis:
